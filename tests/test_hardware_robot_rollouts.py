@@ -1,7 +1,9 @@
 import json
+from types import SimpleNamespace
 
 import pytest
 
+from vla_preflight.bridge import inspect_lerobot
 from vla_preflight.hardware import doctor
 from vla_preflight.robot import check_robot, create_robot_plan
 from vla_preflight.rollouts import evaluate_rollouts, write_rollout_evaluation
@@ -42,6 +44,29 @@ def test_doctor_omits_machine_identity():
     assert result["schema"] == "vla-preflight.doctor/1"
     assert "hostname" not in text and "username" not in text
     assert result["recommendation"]["tier"]
+
+
+def test_lerobot_environment_contract():
+    observed = {
+        "python": "3.12.9",
+        "executable": "/env/python",
+        "lerobot_version": "0.6.2",
+        "train_module": True,
+        "smolvla_module": True,
+        "torch_version": "2.9.0",
+        "cuda_available": True,
+        "cuda_devices": [{"name": "test", "total_memory_gib": 12}],
+    }
+
+    def runner(*args, **kwargs):
+        assert kwargs["timeout"] == 30 and args[0][1] == "-c"
+        return SimpleNamespace(returncode=0, stdout=json.dumps(observed), stderr="")
+
+    result = inspect_lerobot("/env/python", runner=runner)
+    assert result["compatible"] and all(result["checks"].values())
+    observed["lerobot_version"] = "0.5.1"
+    result = inspect_lerobot("/env/python", runner=runner)
+    assert not result["compatible"] and not result["checks"]["supported_lerobot"]
 
 
 def test_robot_plan_gates_and_hashes_calibration(tmp_path):

@@ -69,10 +69,17 @@ def register(subs):
         "--gradient-checkpointing", action=argparse.BooleanOptionalAction, default=True
     )
     plan.add_argument("--device", choices=["cpu", "cuda"], default="cuda")
+    plan.add_argument("--environment-report", type=Path, required=True)
     launch = subs.add_parser(
         "smol-launch", help="Execute a prepared SmolVLA plan (may download weights)"
     )
     launch.add_argument("plan", type=Path)
+    lerobot_check = subs.add_parser(
+        "lerobot-check", help="Check a separate LeRobot 0.6 environment and requested device"
+    )
+    lerobot_check.add_argument("--python", required=True)
+    lerobot_check.add_argument("--device", choices=["cpu", "cuda"], default="cuda")
+    lerobot_check.add_argument("--output", type=Path, required=True)
     doctor = subs.add_parser(
         "doctor", help="Inspect local compute/tooling without exposing host identity or paths"
     )
@@ -190,10 +197,21 @@ def dispatch(args):
             values["python"] = args.python
         print(
             json.dumps(
-                create_smol_plan(args.prepared, args.output, options=SmolOptions(**values)),
+                create_smol_plan(
+                    args.prepared,
+                    args.output,
+                    options=SmolOptions(**values),
+                    environment_report=args.environment_report,
+                ),
                 indent=2,
             )
         )
+    elif args.command == "lerobot-check":
+        from .bridge import write_lerobot_environment
+
+        result = write_lerobot_environment(args.python, args.output, device=args.device)
+        print(json.dumps(result, indent=2))
+        return 0 if result["compatible"] else 1
     elif args.command == "smol-launch":
         from .bridge import launch_smol
 

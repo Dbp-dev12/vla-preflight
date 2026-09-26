@@ -83,12 +83,24 @@ def test_export_preserves_source_and_images(visual, tmp_path):
         export_episodes(visual, tmp_path / "bad", exclude={999})
 
 
-def test_smol_plan_is_train_only_without_execution(visual, tmp_path):
-    from vla_preflight.bridge import create_smol_plan
+def test_smol_plan_is_train_only_without_execution(visual, tmp_path, monkeypatch):
+    from vla_preflight.bridge import create_smol_plan, launch_smol
 
     prepared = tmp_path / "prepared"
     prepare(visual, prepared)
-    result = create_smol_plan(prepared, tmp_path / "plan")
+    environment = tmp_path / "environment.json"
+    environment.write_text(
+        json.dumps(
+            {
+                "schema": "vla-preflight.lerobot-environment/1",
+                "compatible": True,
+                "requested_device": "cuda",
+                "observed": {"lerobot_version": "0.6.2"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    result = create_smol_plan(prepared, tmp_path / "plan", environment_report=environment)
     split = load_json(prepared / "split.json")
     export = load_json(tmp_path / "plan/train-dataset/export-status.json")
     assert set(map(int, export["episode_mapping"])) == set(split["train"])
@@ -97,6 +109,27 @@ def test_smol_plan_is_train_only_without_execution(visual, tmp_path):
     assert "--accelerator.gradient_accumulation.steps=8" in result["command_preview"]
     assert "--policy.gradient_checkpointing=true" in result["command_preview"]
     assert not (tmp_path / "plan/artifacts").exists()
+
+    class Process:
+        def __init__(self, command, cwd, stdout, stderr):
+            artifacts = tmp_path / "plan/artifacts/checkpoints/last"
+            artifacts.mkdir(parents=True)
+            (artifacts / "model.safetensors").write_bytes(b"weights")
+            stdout.write("peak memory: 2048 MiB\n")
+            stdout.flush()
+
+        def wait(self, timeout=None):
+            return 0
+
+        def poll(self):
+            return 0
+
+    monkeypatch.setattr("vla_preflight.bridge.subprocess.Popen", Process)
+    completed = launch_smol(tmp_path / "plan")
+    assert completed["status"] == "completed"
+    assert completed["measured_peak_memory_gib"] == 2
+    external = load_json(tmp_path / "plan/external-run.json")
+    assert external["checkpoint_files"][0]["sha256"]
 
 
 def test_http_host_origin_token_and_actual_job(visual, tmp_path):

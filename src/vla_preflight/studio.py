@@ -140,15 +140,21 @@ class Workspace:
                     self._update(job_id, status="cancelled", artifact=artifact)
                     return
             else:
-                from .bridge import SmolOptions, create_smol_plan
+                from .bridge import SmolOptions, create_smol_plan, inspect_lerobot
 
                 values = {"steps": req.steps, "batch_size": req.batch_size, "seed": req.seed}
                 if req.python:
                     values["python"] = req.python
+                environment_path = self.output / "environment" / f"{job_id}.json"
+                atomic_json(
+                    environment_path,
+                    inspect_lerobot(values.get("python", SmolOptions().python), device="cuda"),
+                )
                 create_smol_plan(
                     self._prepared(req.prepared_id),
                     self.output / "smol-plans" / job_id,
                     options=SmolOptions(**values),
+                    environment_report=environment_path,
                 )
                 artifact = f"smol-plans/{job_id}"
             self._update(job_id, status="completed", artifact=artifact)
