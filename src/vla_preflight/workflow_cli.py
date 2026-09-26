@@ -77,11 +77,19 @@ def register(subs):
         "doctor", help="Inspect local compute/tooling without exposing host identity or paths"
     )
     doctor.add_argument("--output", type=Path, help="Optional JSON report destination")
+    robot_check = subs.add_parser(
+        "robot-check", help="Run non-actuating serial, camera, calibration and safety checks"
+    )
+    robot_check.add_argument("config", type=Path)
+    robot_check.add_argument("--output", type=Path, required=True)
+    robot_check.add_argument("--skip-ports", action="store_true")
+    robot_check.add_argument("--skip-cameras", action="store_true")
     robot = subs.add_parser(
         "robot-plan", help="Validate a robot declaration and generate a gated LeRobot runbook"
     )
     robot.add_argument("config", type=Path)
     robot.add_argument("--output", type=Path, required=True)
+    robot.add_argument("--preflight", type=Path, required=True)
     rollout = subs.add_parser(
         "rollout-eval", help="Summarize real or simulated rollout JSONL with uncertainty"
     )
@@ -197,10 +205,21 @@ def dispatch(args):
 
         result = write_doctor(args.output) if args.output else doctor()
         print(json.dumps(result, ensure_ascii=False, indent=2))
+    elif args.command == "robot-check":
+        from .robot import write_robot_check
+
+        result = write_robot_check(
+            args.config,
+            args.output,
+            probe_ports=not args.skip_ports,
+            probe_cameras=not args.skip_cameras,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result["ready"] else 1
     elif args.command == "robot-plan":
         from .robot import create_robot_plan
 
-        result = create_robot_plan(args.config, args.output)
+        result = create_robot_plan(args.config, args.output, preflight=args.preflight)
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result["safe_to_start"] else 1
     elif args.command == "rollout-eval":

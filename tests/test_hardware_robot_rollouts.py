@@ -3,7 +3,7 @@ import json
 import pytest
 
 from vla_preflight.hardware import doctor
-from vla_preflight.robot import create_robot_plan
+from vla_preflight.robot import check_robot, create_robot_plan
 from vla_preflight.rollouts import evaluate_rollouts, write_rollout_evaluation
 
 
@@ -46,22 +46,70 @@ def test_doctor_omits_machine_identity():
 
 def test_robot_plan_gates_and_hashes_calibration(tmp_path):
     config = robot_config(tmp_path)
-    result = create_robot_plan(config, tmp_path / "plan")
+    report = check_robot(
+        config,
+        port_provider=lambda: ["COM5", "COM6"],
+        camera_probe=lambda _: {
+            "width": 640,
+            "height": 480,
+            "sampled_frames": 3,
+            "sample_rate_fps": 30,
+            "nonconstant": True,
+        },
+        command_finder=lambda _: "available",
+    )
+    preflight = tmp_path / "preflight.json"
+    preflight.write_text(json.dumps(report), encoding="utf-8")
+    assert report["ready"] and report["coverage"]["motors"] == "not-contacted"
+    result = create_robot_plan(config, tmp_path / "plan", preflight=preflight)
     assert result["safe_to_start"]
     assert len(result["calibration"][0]["sha256"]) == 64
     assert result["commands"]["record"][0] == "lerobot-record"
     assert "--dataset.num_episodes=10" in result["commands"]["record"]
     assert (tmp_path / "plan/RUNBOOK.md").is_file()
     with pytest.raises(ValueError, match="already exists"):
-        create_robot_plan(config, tmp_path / "plan")
+        create_robot_plan(config, tmp_path / "plan", preflight=preflight)
 
 
 def test_robot_plan_blocks_unverified_safety(tmp_path):
-    result = create_robot_plan(
-        robot_config(tmp_path, emergency_stop_tested=False), tmp_path / "blocked"
+    config = robot_config(tmp_path, emergency_stop_tested=False)
+    report = check_robot(
+        config,
+        port_provider=lambda: ["COM5", "COM6"],
+        camera_probe=lambda _: {
+            "width": 640,
+            "height": 480,
+            "sampled_frames": 3,
+            "sample_rate_fps": 30,
+            "nonconstant": True,
+        },
+        command_finder=lambda _: "available",
     )
+    preflight = tmp_path / "blocked-check.json"
+    preflight.write_text(json.dumps(report), encoding="utf-8")
+    result = create_robot_plan(config, tmp_path / "blocked", preflight=preflight)
     assert not result["safe_to_start"]
     assert any("Emergency stop" in item for item in result["blockers"])
+
+
+def test_robot_check_reports_missing_devices_and_skips(tmp_path):
+    config = robot_config(tmp_path)
+    report = check_robot(
+        config,
+        port_provider=lambda: ["COM5"],
+        camera_probe=lambda _: (_ for _ in ()).throw(ValueError("no frame")),
+        command_finder=lambda name: name if name == "lerobot-record" else None,
+    )
+    assert not report["ready"]
+    failed = {item["code"] for item in report["checks"] if item["status"] == "fail"}
+    assert {"SERIAL_PORT", "CAMERA_FRAME", "LEROBOT_COMMAND"} <= failed
+    skipped = check_robot(
+        config,
+        probe_ports=False,
+        probe_cameras=False,
+        command_finder=lambda _: "available",
+    )
+    assert skipped["status"] == "incomplete" and not skipped["ready"]
 
 
 def test_rollout_evaluation_reports_uncertainty_and_failures(tmp_path):

@@ -19,6 +19,7 @@ classifiers = [
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "pytest-cov>=5,<8", "ruff>=0.11,<1", "build>=1.2,<2"]
 train = ["torch>=2.6,<3", "Pillow>=10,<13", "av>=12,<19"]
+robot = ["pyserial>=3.5,<4", "opencv-python-headless>=4.9,<4.14"]
 
 [project.scripts]
 vla-preflight = "vla_preflight.cli:main"
