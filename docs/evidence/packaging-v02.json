@@ -1,0 +1,11 @@
+{
+  "version": "0.2.0",
+  "wheel_sha256": "c768930f522075673429defc61c9367b54c17558e9b071d5784c3425470c3b20",
+  "isolated_installed_package": true,
+  "web_assets_and_http_routes": "passed",
+  "synthetic_gradient_steps": 5,
+  "actual_sampler_trace_audit": "passed",
+  "training_status": "completed",
+  "device": "cpu",
+  "scope": "Independent installed wheel; no pretrained-model or GPU validation"
+}

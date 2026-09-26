@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="preflight-token" content="__SESSION_TOKEN__">
+  <title>VLA Workbench</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-icon">V</span><div>VLA Workbench<small>DATA → TRAIN → INSPECT</small></div></div>
+    <div class="local-badge"><i></i> LOCAL · 数据保留在本机</div>
+    <nav aria-label="工作流程">
+      <button data-tab="overview" class="active"><span>01</span> 数据总览</button>
+      <button data-tab="episodes"><span>02</span> 轨迹检查</button>
+      <button data-tab="prepare"><span>03</span> 数据准备</button>
+      <button data-tab="train"><span>04</span> 训练与比较</button>
+    </nav>
+    <div class="sidebar-bottom"><b>可复现，从数据开始</b><p>文件指纹 · 训练集统计量<br>实际采样记录 · 实验结果</p><small id="version">v0.2.0 alpha</small></div>
+  </aside>
+  <main>
+    <header><div><div class="eyebrow">YOUR LOCAL ROBOT LEARNING WORKSPACE</div><h1 id="page-title">数据总览</h1></div><div class="header-actions"><span id="connection" class="pill">正在连接</span><button id="refresh" class="secondary">重新分析</button></div></header>
+    <div id="dataset-line" class="dataset-line"></div>
+    <div id="notice" role="status" aria-live="polite" hidden></div>
+    <div id="job-bar" aria-live="polite"></div>
+    <div id="content"><div class="card">正在读取本地工作区…</div></div>
+    <footer>VLA Preflight · 源数据只读。小型基线的离线误差不代表机器人任务成功率。</footer>
+  </main>
+  <script src="/app.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "action_dim": 2,
+  "state_dim": 2,
+  "fps": 10,
+  "camera_keys": [],
+  "normalization": {"action": "MEAN_STD", "observation.state": "MEAN_STD"},
+  "train_episodes": [0],
+  "validation_episodes": [1],
+  "training": {
+    "action_names": ["joint_a", "joint_b"],
+    "action_units": ["rad", "rad"],
+    "action_mode": "absolute",
+    "coordinate_frame": "joint_space"
+  },
+  "deployment": {
+    "action_names": ["joint_a", "joint_b"],
+    "action_units": ["rad", "rad"],
+    "action_mode": "absolute",
+    "coordinate_frame": "joint_space"
+  }
+}
+

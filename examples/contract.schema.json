@@ -1,0 +1,210 @@
+{
+  "$defs": {
+    "Semantics": {
+      "additionalProperties": false,
+      "properties": {
+        "action_names": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Action Names"
+        },
+        "action_units": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Action Units"
+        },
+        "action_mode": {
+          "anyOf": [
+            {
+              "enum": [
+                "absolute",
+                "delta",
+                "velocity"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Action Mode"
+        },
+        "coordinate_frame": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Coordinate Frame"
+        },
+        "gripper_convention": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gripper Convention"
+        }
+      },
+      "title": "Semantics",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "action_dim": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Action Dim"
+    },
+    "state_dim": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "State Dim"
+    },
+    "fps": {
+      "anyOf": [
+        {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Fps"
+    },
+    "camera_keys": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Camera Keys",
+      "type": "array"
+    },
+    "normalization": {
+      "additionalProperties": {
+        "enum": [
+          "IDENTITY",
+          "MEAN_STD",
+          "MIN_MAX",
+          "QUANTILES"
+        ],
+        "type": "string"
+      },
+      "propertyNames": {
+        "enum": [
+          "action",
+          "observation.state"
+        ]
+      },
+      "title": "Normalization",
+      "type": "object"
+    },
+    "train_episodes": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Train Episodes"
+    },
+    "validation_episodes": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Validation Episodes"
+    },
+    "training": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Semantics"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "deployment": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Semantics"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "title": "Contract",
+  "type": "object"
+}

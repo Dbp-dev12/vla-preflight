@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "vla-preflight"
+version = "0.2.0"
+description = "Local VLA workbench: data diagnostics, preparation, reference training and experiments"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = ["numpy>=1.26,<3", "pyarrow>=16,<24", "pydantic>=2.7,<3"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "pytest-cov>=5,<8", "ruff>=0.11,<1", "build>=1.2,<2"]
+train = ["torch>=2.6,<3", "Pillow>=10,<13", "av>=12,<19"]
+
+[project.scripts]
+vla-preflight = "vla_preflight.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vla_preflight"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+

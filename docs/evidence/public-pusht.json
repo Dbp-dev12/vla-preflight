@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "tool_version": "0.1.0",
+  "created_at": "2026-09-25T15:16:12.845589+00:00",
+  "status": "passed",
+  "scan_complete": true,
+  "coverage": {
+    "rows_scanned": 25650,
+    "files_scanned": 1,
+    "dataset": "public-pusht",
+    "timestamp_tolerance_seconds": 0.001,
+    "training_contract": "provided",
+    "sampler": "not checked: no actual sampler trace supplied",
+    "image_payloads": "not decoded",
+    "physical_semantics": "not inferred",
+    "dataset_version": "v3.0",
+    "scope": "full",
+    "episodes_selected": 206,
+    "episodes_in_metadata": 206,
+    "selected_episode_ids": "see input",
+    "file_order": "metadata paths, lexical order; frame order preserved",
+    "semantic_comparison": "not checked: two explicit declarations required",
+    "statistics": "stored numeric-vector schema; not recomputed from data",
+    "video_check": "skip"
+  },
+  "findings": [],
+  "limitations": [
+    "Passing means only that the listed checks found no issue in the scanned scope.",
+    "No model training, robot execution, or task-success evaluation is performed.",
+    "Physical units, coordinate frames and sensor alignment are not inferred.",
+    "Video probing does not verify every frame or semantic synchronization."
+  ],
+  "provenance": {
+    "repo_id": "lerobot/pusht",
+    "revision": "7628202a2180972f291ba1bc6723834921e72c19",
+    "files": {
+      "meta/info.json": {
+        "bytes": 2261,
+        "sha256": "0b46becc21ad92b117da1e95daf44110bb21d0bde75638b4ad167c8ccd959d38"
+      },
+      "meta/stats.json": {
+        "bytes": 4371,
+        "sha256": "2a58f97df48893274c587fdf09f5cecb31fe385b1e188a82197a8972ccfb9d6d"
+      },
+      "meta/tasks.parquet": {
+        "bytes": 2265,
+        "sha256": "95535f5152771bc0a6ab0fd93d23d7c1fecd9b7a13dc117852dfdd94f5b2c711"
+      },
+      "meta/episodes/chunk-000/file-000.parquet": {
+        "bytes": 106584,
+        "sha256": "bc1226f33d3d1635ec1954f9942073709be8e106fde5f4f16b9d52edc4e0ebc4"
+      },
+      "data/chunk-000/file-000.parquet": {
+        "bytes": 674393,
+        "sha256": "9abc0431f12d10c33b5b37b1bf1e6e557c8ae1c8c29fb86658969e48fcbbbf01"
+      }
+    },
+    "scope": "numeric-only; videos not downloaded; no model evaluation",
+    "dataset_license": "Check the upstream dataset card; data are not redistributed"
+  }
+}

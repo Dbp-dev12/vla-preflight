@@ -1,0 +1,133 @@
+import http.client
+import json
+import threading
+
+import numpy as np
+import pytest
+
+from vla_preflight.analysis import Moments, prepare, split_episodes
+from vla_preflight.contract import load_json
+from vla_preflight.dataset import Dataset
+from vla_preflight.export import export_episodes
+from vla_preflight.workflow_io import episode_records, fingerprint, load_prepared
+
+
+@pytest.fixture
+def visual(tmp_path):
+    pytest.importorskip("PIL")
+    from vla_preflight.learning_demo import learning_demo
+
+    return learning_demo(tmp_path / "source", episodes=8, frames=8)
+
+
+def test_moments_matches_numpy():
+    x = np.random.default_rng(31).normal(size=(137, 3))
+    moment = Moments(3)
+    for row in x:
+        moment.add(row)
+    result = moment.result()
+    np.testing.assert_allclose(result["mean"], x.mean(0), atol=1e-14)
+    np.testing.assert_allclose(result["std"], x.std(0), atol=1e-14)
+    np.testing.assert_allclose(result["q01"], np.quantile(x, 0.01, axis=0))
+
+
+def test_duplicate_groups_never_cross_split():
+    profile = {"episodes": [{"episode": i, "numeric_hash": str(i // 2)} for i in range(12)]}
+    for seed in range(10):
+        split = split_episodes(profile, seed=seed)
+        assert set(split["train"]).isdisjoint(split["validation"])
+        for i in range(0, 12, 2):
+            assert (i in split["train"]) == (i + 1 in split["train"])
+        assert split == split_episodes(profile, seed=seed)
+
+
+def test_prepare_fits_train_only_and_detects_mutation(visual, tmp_path):
+    target = tmp_path / "prepared"
+    prepare(visual, target)
+    ds, _, split, normal = load_prepared(target)
+    actions = np.asarray([r["action"] for ep in split["train"] for r in episode_records(ds, ep)])
+    np.testing.assert_allclose(normal["features"]["action"]["mean"], actions.mean(0))
+    assert normal["fit_episodes"] == split["train"]
+    path = target / "split.json"
+    path.write_text(path.read_text() + " ")
+    with pytest.raises(ValueError, match="artifact changed"):
+        load_prepared(target)
+
+
+def test_source_mutation_rejected(visual, tmp_path):
+    target = tmp_path / "prepared"
+    prepare(visual, target)
+    path = visual / "meta/info.json"
+    path.write_text(path.read_text() + " ")
+    with pytest.raises(ValueError, match="Source changed"):
+        load_prepared(target)
+
+
+def test_export_preserves_source_and_images(visual, tmp_path):
+    ds = Dataset(visual)
+    before = fingerprint(ds)
+    target = tmp_path / "exported"
+    result = export_episodes(visual, target, exclude={1, 3, 5})
+    assert result["complete"]
+    assert fingerprint(ds) == before
+    copied = Dataset(target)
+    assert len(copied.episodes) == 5
+    for old, new in result["episode_mapping"].items():
+        original, exported = episode_records(ds, int(old)), episode_records(copied, new)
+        assert [r["action"] for r in original] == [r["action"] for r in exported]
+        assert original[0]["observation.image"] == exported[0]["observation.image"]
+        assert {r["episode_index"] for r in exported} == {new}
+    with pytest.raises(ValueError, match="outside"):
+        export_episodes(visual, visual / "child", exclude=set())
+    with pytest.raises(ValueError, match="Unknown"):
+        export_episodes(visual, tmp_path / "bad", exclude={999})
+
+
+def test_smol_plan_is_train_only_without_execution(visual, tmp_path):
+    from vla_preflight.bridge import create_smol_plan
+
+    prepared = tmp_path / "prepared"
+    prepare(visual, prepared)
+    result = create_smol_plan(prepared, tmp_path / "plan")
+    split = load_json(prepared / "split.json")
+    export = load_json(tmp_path / "plan/train-dataset/export-status.json")
+    assert set(map(int, export["episode_mapping"])) == set(split["train"])
+    assert result["status"] == "planned"
+    assert not (tmp_path / "plan/artifacts").exists()
+
+
+def test_http_host_origin_token_and_actual_job(visual, tmp_path):
+    from vla_preflight.studio import Workspace, make_server
+
+    workspace = Workspace(visual, tmp_path / "studio")
+    server = make_server(workspace, 0)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    host = f"127.0.0.1:{server.server_port}"
+
+    def request(method, path, data=None, headers=None):
+        connection = http.client.HTTPConnection("127.0.0.1", server.server_port)
+        connection.request(method, path, json.dumps(data) if data else None, headers or {})
+        response = connection.getresponse()
+        status, body = response.status, response.read()
+        connection.close()
+        return status, body
+
+    try:
+        assert request("GET", "/api/state")[0] == 200
+        assert request("GET", "/", headers={"Host": "evil.example"})[0] == 403
+        assert request("POST", "/api/jobs", {"kind": "analyze"})[0] == 403
+        headers = {"Origin": f"http://{host}", "X-Preflight-Token": workspace.token}
+        status, body = request("POST", "/api/jobs", {"kind": "prepare"}, headers)
+        assert status == 202
+        job_id = json.loads(body)["id"]
+        workspace.pool.shutdown(wait=True)
+        assert workspace.jobs[job_id]["status"] == "completed"
+        assert len(workspace.snapshot()["prepared"]) == 1
+        status, body = request("GET", "/api/image?episode=0&frame=0")
+        assert status == 200 and body.startswith(b"\x89PNG")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
+        workspace.close()

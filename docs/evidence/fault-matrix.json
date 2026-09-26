@@ -1,0 +1,187 @@
+{
+  "description": "Synthetic fault regression matrix, not real-world detection accuracy",
+  "cases": [
+    {
+      "format": "v2.1",
+      "fault": "none",
+      "expected": null,
+      "observed": [],
+      "matched": true
+    },
+    {
+      "format": "v2.1",
+      "fault": "nan-action",
+      "expected": "NONFINITE",
+      "observed": [
+        "NONFINITE"
+      ],
+      "matched": true
+    },
+    {
+      "format": "v2.1",
+      "fault": "wrong-dimension",
+      "expected": "CONFIG_DIMENSION",
+      "observed": [
+        "CONFIG_DIMENSION"
+      ],
+      "matched": true
+    },
+    {
+      "format": "v2.1",
+      "fault": "missing-camera",
+      "expected": "CONFIG_CAMERA",
+      "observed": [
+        "CONFIG_CAMERA"
+      ],
+      "matched": true
+    },
+    {
+      "format": "v2.1",
+      "fault": "split-overlap",
+      "expected": "SPLIT_OVERLAP",
+      "observed": [
+        "SPLIT_OVERLAP"
+      ],
+      "matched": true
+    },
+    {
+      "format": "v2.1",
+      "fault": "timestamp-shift",
+      "expected": "TIMESTAMP_FPS",
+      "observed": [
+        "TIMESTAMP_FPS"
+      ],
+      "matched": true
+    },
+    {
+      "format": "v2.1",
+      "fault": "negative-std",
+      "expected": "STATS_NEGATIVE_STD",
+      "observed": [
+        "STATS_NEGATIVE_STD"
+      ],
+      "matched": true
+    },
+    {
+      "format": "v2.1",
+      "fault": "joint-order",
+      "expected": "SEMANTICS_MISMATCH",
+      "observed": [
+        "SEMANTICS_MISMATCH"
+      ],
+      "matched": true
+    },
+    {
+      "format": "v2.1",
+      "fault": "cross-episode",
+      "expected": "WINDOW_CROSS_EPISODE",
+      "observed": [
+        "WINDOW_CROSS_EPISODE",
+        "WINDOW_TARGET"
+      ],
+      "matched": true
+    },
+    {
+      "format": "v2.1",
+      "fault": "missing-shard",
+      "expected": "DATA_FILE_MISSING",
+      "observed": [
+        "DATA_FILE_MISSING",
+        "EPISODE_LENGTH"
+      ],
+      "matched": true
+    },
+    {
+      "format": "v3.0",
+      "fault": "none",
+      "expected": null,
+      "observed": [],
+      "matched": true
+    },
+    {
+      "format": "v3.0",
+      "fault": "nan-action",
+      "expected": "NONFINITE",
+      "observed": [
+        "NONFINITE"
+      ],
+      "matched": true
+    },
+    {
+      "format": "v3.0",
+      "fault": "wrong-dimension",
+      "expected": "CONFIG_DIMENSION",
+      "observed": [
+        "CONFIG_DIMENSION"
+      ],
+      "matched": true
+    },
+    {
+      "format": "v3.0",
+      "fault": "missing-camera",
+      "expected": "CONFIG_CAMERA",
+      "observed": [
+        "CONFIG_CAMERA"
+      ],
+      "matched": true
+    },
+    {
+      "format": "v3.0",
+      "fault": "split-overlap",
+      "expected": "SPLIT_OVERLAP",
+      "observed": [
+        "SPLIT_OVERLAP"
+      ],
+      "matched": true
+    },
+    {
+      "format": "v3.0",
+      "fault": "timestamp-shift",
+      "expected": "TIMESTAMP_FPS",
+      "observed": [
+        "TIMESTAMP_FPS"
+      ],
+      "matched": true
+    },
+    {
+      "format": "v3.0",
+      "fault": "negative-std",
+      "expected": "STATS_NEGATIVE_STD",
+      "observed": [
+        "STATS_NEGATIVE_STD"
+      ],
+      "matched": true
+    },
+    {
+      "format": "v3.0",
+      "fault": "joint-order",
+      "expected": "SEMANTICS_MISMATCH",
+      "observed": [
+        "SEMANTICS_MISMATCH"
+      ],
+      "matched": true
+    },
+    {
+      "format": "v3.0",
+      "fault": "cross-episode",
+      "expected": "WINDOW_CROSS_EPISODE",
+      "observed": [
+        "WINDOW_CROSS_EPISODE",
+        "WINDOW_TARGET"
+      ],
+      "matched": true
+    },
+    {
+      "format": "v3.0",
+      "fault": "missing-shard",
+      "expected": "DATA_FILE_MISSING",
+      "observed": [
+        "DATA_FILE_MISSING",
+        "EPISODE_LENGTH"
+      ],
+      "matched": true
+    }
+  ],
+  "matched": 20,
+  "total": 20
+}
