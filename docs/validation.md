@@ -1,4 +1,4 @@
-# v0.2.0 validation record
+# v0.6.0 validation record
 
 Validation date: **2026-09-26**. Verification used CPU-only PyTorch with the
 optional image and video dependencies. Host paths, account details, hardware
@@ -6,7 +6,7 @@ identifiers and other machine-specific information are intentionally omitted.
 
 | Check | Observed result |
 |---|---|
-| Regression suite | 111 tests passed |
+| Regression suite | 116 tests passed |
 | Synthetic fault matrix | 20/20 expected outcomes |
 | Real gradient updates | Image, text, state and prediction-head weights changed |
 | CPU resume | Exact parameter equality versus uninterrupted training |
@@ -17,6 +17,9 @@ identifiers and other machine-specific information are intentionally omitted.
 | Public numeric data | Pinned PushT revision: 206 episodes and 25,650 frames |
 | Installed wheel | Independent install, web routes and training smoke passed |
 | Lint, format and build | Passed |
+| Compute doctor | Privacy fields and recommendation selection covered |
+| Robot plan | Safety gates, calibration hashes and generated commands covered |
+| Rollout evaluation | Validation, grouping, failure modes and Wilson interval covered |
 
 Workbench testing found and fixed delayed saving of numeric form values. No console
 errors were observed in the exercised flows. These are manual browser checks, not an
@@ -67,6 +70,8 @@ revision and content hashes are recorded in [public-pusht.json](evidence/public-
 - Upstream-loader compatibility of exported datasets.
 - External-model held-out evaluation, memory requirements or CUDA reproducibility.
 - Robot task success, simulator rollout performance or real-data generalization.
+- Physical port/camera access, emergency-stop behavior and calibration correctness.
+- Real rollout outcome quality; only the aggregation implementation is tested synthetically.
 - Large-corpus memory/performance or semantic duplicate detection.
 - Remote CI results until the corresponding workflow has completed.
 

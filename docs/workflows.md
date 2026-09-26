@@ -27,7 +27,15 @@ Only load checkpoints you trust. Resume requires the same bundle/camera/model sh
 
 ## Local workbench
 
-`studio DATASET --workspace OUTPUT --port 8765 --open` starts a loopback server and one background job at a time. UI is Chinese in v0.2. Use a distinct workspace for each dataset. Restarted job history marks previously running jobs interrupted. Close with Ctrl+C; training is asked to cancel.
+`studio DATASET --workspace OUTPUT --port 8765 --open` starts a loopback server and one background job at a time. The UI is Chinese. Use a distinct workspace for each dataset. Restarted job history marks previously running jobs interrupted. Close with Ctrl+C; training is asked to cancel.
+
+## Compute and physical evaluation
+
+`doctor` records a shareable compute inventory without machine identity or absolute paths. Its VRAM tier is guidance only; it is not a pretrained-model memory benchmark.
+
+`robot-plan` validates a strict robot declaration, hashes available calibration files and blocks the plan unless the emergency stop, cleared workspace, low-speed first run and human supervision are all declared. It generates argument arrays and a runbook but never imports a hardware driver or executes a command.
+
+`rollout-eval` validates unique episode IDs and reports observed success, Wilson 95% intervals, duration, interventions and failure modes overall and by task/checkpoint. These are task-level observations, not a causal comparison or safety certificate. See [hardware.md](hardware.md).
 
 Host checks, same-origin checks and session tokens protect mutation endpoints. Do not expose this single-user server to a network. Paths, task text and evidence remain local; exported reports should be reviewed before sharing.
 
@@ -35,7 +43,7 @@ Host checks, same-origin checks and session tokens protect mutation endpoints. D
 
 Export selects complete episodes, materializes path-based images, copies videos unchanged, reindexes IDs, preserves timestamps and recomputes numeric statistics. export-status.json is complete only after local verification. Visual statistics are not produced. Shared video files can contain excluded footage; this is not privacy redaction.
 
-`smol-plan` exports only training episodes and constructs an external LeRobot command: frozen vision encoder, expert-only training, batch size 1 by default, uploads/W&B disabled. `smol-launch` explicitly executes it and records external.log/status; it may download weights. A successful process must also leave a safetensors checkpoint.
+`smol-plan` exports only training episodes and constructs an external LeRobot command: frozen vision encoder, expert-only training, gradient checkpointing, batch size 1 and eight-step gradient accumulation by default, uploads/W&B disabled. `smol-launch` explicitly executes it and records external.log/status; it may download weights. A successful process must also leave a safetensors checkpoint.
 
 The bridge has not been validated against a live pretrained-model run or upstream dataset loader. No external-model held-out evaluation, camera remapping, arbitrary processors, or guaranteed memory configuration is provided. Review upstream requirements before execution. Tiny VLA is the fully exercised training backend.
 

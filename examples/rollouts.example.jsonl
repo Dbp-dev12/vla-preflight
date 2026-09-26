@@ -1,0 +1,3 @@
+{"episode_id":"eval-001","success":true,"duration_s":12.4,"interventions":0,"task":"red block to bowl","checkpoint":"policy-10000","dataset_digest":"example-only"}
+{"episode_id":"eval-002","success":false,"duration_s":18.1,"interventions":1,"task":"red block to bowl","failure_mode":"missed grasp","checkpoint":"policy-10000","dataset_digest":"example-only"}
+{"episode_id":"eval-003","success":true,"duration_s":13.7,"interventions":0,"task":"red block to bowl","checkpoint":"policy-10000","dataset_digest":"example-only"}

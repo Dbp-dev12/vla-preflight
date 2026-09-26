@@ -7,7 +7,7 @@ import sys
 import time
 from pathlib import Path
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
 
 from .contract import load_json
 from .dataset import Dataset
@@ -21,6 +21,8 @@ class SmolOptions(BaseModel):
     pretrained: str = "lerobot/smolvla_base"
     steps: StrictInt = Field(default=1000, ge=1, le=1000000)
     batch_size: StrictInt = Field(default=1, ge=1, le=1024)
+    gradient_accumulation: StrictInt = Field(default=8, ge=1, le=1024)
+    gradient_checkpointing: StrictBool = True
     seed: StrictInt = Field(default=7, ge=0, le=2**31 - 1)
     device: str = "cuda"
 
@@ -38,10 +40,12 @@ def smol_command(plan_dir: Path, options: SmolOptions):
         f"--output_dir={plan_dir.resolve() / 'artifacts'}",
         f"--steps={options.steps}",
         f"--batch_size={options.batch_size}",
+        f"--accelerator.gradient_accumulation.steps={options.gradient_accumulation}",
         f"--seed={options.seed}",
         f"--policy.device={options.device}",
         "--policy.freeze_vision_encoder=true",
         "--policy.train_expert_only=true",
+        f"--policy.gradient_checkpointing={str(options.gradient_checkpointing).lower()}",
         "--policy.push_to_hub=false",
         "--wandb.enable=false",
         "--num_workers=0",
@@ -68,11 +72,12 @@ def create_smol_plan(prepared: Path, destination: Path, *, options: SmolOptions 
         "original_source": manifest["source"]["digest"],
         "held_out_original_episode_ids": split["validation"],
         "normalization": "Recomputed on physically exported training episodes only",
+        "effective_batch_size": options.batch_size * options.gradient_accumulation,
         "limits": [
             "SmolVLA execution requires a separate compatible LeRobot environment.",
             "Model memory use has not been measured; validate it on the target system.",
             "This adapter launches fine-tuning; external model evaluation is not implemented.",
-            "Only the built-in tiny-vla backend has end-to-end local validation in v0.2.",
+            "Only the built-in tiny-vla backend has end-to-end local validation in v0.6.",
         ],
     }
     atomic_json(destination / "plan.json", plan)

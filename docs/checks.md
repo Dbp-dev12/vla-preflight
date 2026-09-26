@@ -33,7 +33,7 @@ and at most five evidence examples; counts are check occurrences, not distinct r
   via `data/chunk_index` and `data/file_index`. Complete metadata is required even when
   selecting a subset of episodes. Canonical global index ranges must be contiguous.
 - Optional aggregate `meta/stats.json`. Some v2.1 datasets only store per-episode
-  statistics; v0.1 does **not** aggregate `episodes_stats.jsonl`, and reports the missing
+  statistics; the audit does **not** aggregate `episodes_stats.jsonl`, and reports the missing
   aggregate. Without a normalization requirement this is a warning; with one it is an error.
 - Numeric action/state vectors only. Image feature payloads, labels and task semantics are not audited.
 

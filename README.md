@@ -1,10 +1,10 @@
 # VLA Preflight Workbench
 
-**Inspect robot-learning data, prepare reproducible splits, and run a small VLA experiment locally.**
+**Move from robot-learning data checks to reproducible training and supervised rollout evidence.**
 
 [中文](README.zh-CN.md) · [Workflow guide](docs/workflows.md) · [Validation](docs/validation.md) · [Audit checks](docs/checks.md)
 
-v0.2.0 alpha connects data diagnostics to actual training artifacts. It targets people with a laptop, local LeRobot v2.1/v3.0 data and no robot. The local web workbench needs no Node build step or cloud account.
+v0.6.0 alpha keeps the laptop-only path and adds a careful path for users with CUDA GPUs and physical robots. It diagnoses compute without leaking host identity, generates safety-gated LeRobot bring-up plans, and reports real or simulated rollout success with uncertainty. It never silently connects to hardware or runs a robot.
 
 | Capability | What actually happens |
 |---|---|
@@ -14,6 +14,9 @@ v0.2.0 alpha connects data diagnostics to actual training artifacts. It targets 
 | Compare | Record baselines, loss curves, last/best checkpoints, sampler traces and compatible resumed runs |
 | Export | Filter episodes into a new v3 dataset, reindex and recompute numeric statistics |
 | Extend | Generate an **experimental** SmolVLA plan with a physically separate training split |
+| Diagnose | Report CUDA devices, VRAM, optional packages and LeRobot commands without hostnames, usernames or paths |
+| Bring up | Validate a declared robot/camera/calibration setup and generate reviewable teleoperation/recording commands |
+| Evaluate | Summarize rollout success, interventions, failure modes and Wilson confidence intervals by task/checkpoint |
 
 Tiny VLA is a reference trainer, **not a pretrained foundation model**. Offline action error is not robot task success. SmolVLA execution and memory use have not been validated. This project does not claim novelty over every GitHub repository or replace LeRobot.
 
@@ -58,15 +61,25 @@ vla-preflight audit demo-output/broken/dataset --contract demo-output/broken/con
 
 The final command intentionally exits 1 and detects `WINDOW_CROSS_EPISODE`. Audit exit codes: 0=no errors, 1=findings/strict warnings, 2=incomplete input/scan. See [contracts](docs/contracts.md) for declared assumptions versus physical truth.
 
+## GPU and robot path
+
+```shell
+vla-preflight doctor --output reports/doctor.json
+vla-preflight robot-plan examples/robot.example.json --output runs/robot-plan
+vla-preflight rollout-eval examples/rollouts.example.jsonl --output reports/rollouts.json
+```
+
+The checked-in robot example is intentionally blocked until the emergency stop and workspace gates are changed after physical verification. `robot-plan` only writes `plan.json` and `RUNBOOK.md`; it does not open ports, cameras or motors. Generated recording commands follow the current upstream `lerobot-record` interface. See the [hardware workflow](docs/hardware.md).
+
 ## Experimental pretrained-model bridge
 
 ```shell
-vla-preflight smol-plan runs/prepared --output runs/smol-plan --python /path/to/lerobot-env/bin/python
+vla-preflight smol-plan runs/prepared --output runs/smol-plan --python /path/to/lerobot-env/bin/python --gradient-accumulation 8
 # Explicit launch: may download weights and use your GPU.
 vla-preflight smol-launch runs/smol-plan
 ```
 
-Use a separate environment compatible with [LeRobot](https://github.com/huggingface/lerobot) and [SmolVLA](https://huggingface.co/docs/lerobot/smolvla). The bridge does not install LeRobot, guarantee upstream format/API compatibility, provide external-model evaluation, or claim measured memory requirements. Opening the workbench or generating a plan never downloads a model.
+Use a separate environment compatible with [LeRobot](https://github.com/huggingface/lerobot) and [SmolVLA](https://huggingface.co/docs/lerobot/smolvla). Plans default to batch size 1, eight-step gradient accumulation, gradient checkpointing, a frozen vision encoder and expert-only training. The bridge does not install LeRobot, guarantee upstream format/API compatibility, provide external-model evaluation, or claim measured memory requirements. Opening the workbench or generating a plan never downloads a model.
 
 ## Scope and adoption
 
@@ -76,7 +89,7 @@ The useful contribution is a connected workflow: the same preparation bundle bin
 - Audit streams numeric rows. Profiling retains numeric rows in RAM. Training preloads selected-camera 32×32 images, up to 50,000 frames by default. Export subsets for larger data.
 - Duplicate groups compare action/state and episode task labels, not images or semantics; no task-stratified split.
 - Lag correlation is exploratory, not a latency measurement or automatic repair.
-- Reference model uses one camera, state, first 64 UTF-8 instruction bytes and action chunks; no robot deployment.
+- Reference model uses one camera, state, first 64 UTF-8 instruction bytes and action chunks. Physical policy execution remains an external, supervised LeRobot step.
 - Sources are read-only. Exports may copy entire shared videos including excluded footage. Review paths/task text/evidence before sharing.
 - Local server binds only `127.0.0.1`. No telemetry/uploads. Not a multiuser service.
 

@@ -93,6 +93,9 @@ def test_smol_plan_is_train_only_without_execution(visual, tmp_path):
     export = load_json(tmp_path / "plan/train-dataset/export-status.json")
     assert set(map(int, export["episode_mapping"])) == set(split["train"])
     assert result["status"] == "planned"
+    assert result["effective_batch_size"] == 8
+    assert "--accelerator.gradient_accumulation.steps=8" in result["command_preview"]
+    assert "--policy.gradient_checkpointing=true" in result["command_preview"]
     assert not (tmp_path / "plan/artifacts").exists()
 
 

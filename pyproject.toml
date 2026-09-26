@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "vla-preflight"
-version = "0.2.0"
-description = "Local VLA workbench: data diagnostics, preparation, reference training and experiments"
+version = "0.6.0"
+description = "Local VLA workbench from data preflight to supervised robot rollout evaluation"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"

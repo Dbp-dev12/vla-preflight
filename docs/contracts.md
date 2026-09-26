@@ -11,7 +11,7 @@ checks are only performed for expectations you actually supply.
 - `fps`: positive, finite expected data frequency.
 - `camera_keys`: exact dataset visual keys, before a trainer-specific rename.
 - `normalization`: dataset feature → `IDENTITY`, `MEAN_STD`, `MIN_MAX`, `QUANTILES`.
-  v0.1 checks statistics for `action` and `observation.state` only.
+  The audit checks statistics for `action` and `observation.state` only.
 - `train_episodes`, `validation_episodes`: optional nonempty, unique integer ID lists.
   If both are supplied, the tool checks overlap. It does not detect duplicate content
   stored under different IDs, nor infer a validation split from a training config.

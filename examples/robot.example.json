@@ -1,0 +1,31 @@
+{
+  "name": "so101-lab",
+  "robot_type": "so101_follower",
+  "robot_port": "/dev/ttyACM0",
+  "robot_id": "follower_arm",
+  "teleop_type": "so101_leader",
+  "teleop_port": "/dev/ttyACM1",
+  "teleop_id": "leader_arm",
+  "cameras": {
+    "front": {
+      "type": "opencv",
+      "index_or_path": 0,
+      "width": 640,
+      "height": 480,
+      "fps": 30
+    }
+  },
+  "dataset_repo_id": "your-name/so101-task",
+  "task": "Pick up the red block and place it in the bowl",
+  "num_episodes": 30,
+  "calibration_files": [],
+  "safety": {
+    "emergency_stop_tested": false,
+    "workspace_cleared": false,
+    "low_speed_first_run": true,
+    "human_supervision": true,
+    "notes": [
+      "Set the physical speed limit before changing both blocking flags."
+    ]
+  }
+}

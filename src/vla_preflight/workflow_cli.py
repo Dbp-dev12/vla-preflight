@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -63,11 +64,29 @@ def register(subs):
     plan.add_argument("--pretrained", default="lerobot/smolvla_base")
     plan.add_argument("--steps", type=int, default=1000)
     plan.add_argument("--batch-size", type=int, default=1)
+    plan.add_argument("--gradient-accumulation", type=int, default=8)
+    plan.add_argument(
+        "--gradient-checkpointing", action=argparse.BooleanOptionalAction, default=True
+    )
     plan.add_argument("--device", choices=["cpu", "cuda"], default="cuda")
     launch = subs.add_parser(
         "smol-launch", help="Execute a prepared SmolVLA plan (may download weights)"
     )
     launch.add_argument("plan", type=Path)
+    doctor = subs.add_parser(
+        "doctor", help="Inspect local compute/tooling without exposing host identity or paths"
+    )
+    doctor.add_argument("--output", type=Path, help="Optional JSON report destination")
+    robot = subs.add_parser(
+        "robot-plan", help="Validate a robot declaration and generate a gated LeRobot runbook"
+    )
+    robot.add_argument("config", type=Path)
+    robot.add_argument("--output", type=Path, required=True)
+    rollout = subs.add_parser(
+        "rollout-eval", help="Summarize real or simulated rollout JSONL with uncertainty"
+    )
+    rollout.add_argument("log", type=Path)
+    rollout.add_argument("--output", type=Path, required=True)
     studio = subs.add_parser("studio", help="Local data and training workbench at 127.0.0.1")
     studio.add_argument("dataset", type=Path)
     studio.add_argument("--workspace", type=Path, default=Path("workbench-output"))
@@ -149,7 +168,15 @@ def dispatch(args):
         from .bridge import SmolOptions, create_smol_plan
 
         values = {
-            name: getattr(args, name) for name in ("pretrained", "steps", "batch_size", "device")
+            name: getattr(args, name)
+            for name in (
+                "pretrained",
+                "steps",
+                "batch_size",
+                "gradient_accumulation",
+                "gradient_checkpointing",
+                "device",
+            )
         }
         if args.python:
             values["python"] = args.python
@@ -165,6 +192,22 @@ def dispatch(args):
         result = launch_smol(args.plan)
         print(json.dumps(result, indent=2))
         return 0 if result["status"] == "completed" else 1
+    elif args.command == "doctor":
+        from .hardware import doctor, write_doctor
+
+        result = write_doctor(args.output) if args.output else doctor()
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    elif args.command == "robot-plan":
+        from .robot import create_robot_plan
+
+        result = create_robot_plan(args.config, args.output)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result["safe_to_start"] else 1
+    elif args.command == "rollout-eval":
+        from .rollouts import write_rollout_evaluation
+
+        result = write_rollout_evaluation(args.log, args.output)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
     elif args.command == "studio":
         from .studio import serve
 

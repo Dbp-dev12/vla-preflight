@@ -1,3 +1,3 @@
 """Local VLA diagnostics, preparation, reference training and experiment workbench."""
 
-__version__ = "0.2.0"
+__version__ = "0.6.0"

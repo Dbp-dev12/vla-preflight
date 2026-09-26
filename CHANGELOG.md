@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.0 — 2026-09-26
+
+- Privacy-conscious `doctor` report for CUDA devices, VRAM, packages and LeRobot command availability.
+- Low-memory SmolVLA plans now expose gradient accumulation and gradient checkpointing.
+- Validated robot/camera/teleoperator declarations with calibration hashes and four explicit safety gates.
+- Reviewable `lerobot-teleoperate` and `lerobot-record` command generation; the tool never opens hardware.
+- Rollout JSONL evaluation with task/checkpoint slices, interventions, failure modes and Wilson intervals.
+- Hardware runbook, safe blocked example and regression coverage for the new workflow.
+
+Still alpha: physical control and pretrained-model execution remain external and require supervised validation.
+
 ## 0.2.0 — 2026-09-26
 
 - Local browser workbench with real background preparation, export and training jobs.
