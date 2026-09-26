@@ -18,7 +18,7 @@ v0.6.0 alpha 同时覆盖两类用户：没有机械臂时可用合成数据跑�
 - **机械臂上机门禁**：校验机械臂、遥操作器、相机、标定文件和安全声明，生成可审阅的遥操作与采集命令，但不执行。
 - **真实 rollout 评估**：按任务和检查点统计成功率、Wilson 95% 区间、人工干预和失败模式，不用训练 loss 冒充成功率。
 
-Tiny VLA 是随机初始化的小型参考模型，**不是预训练大模型**。SmolVLA 接口没有做真实模型训练或显存占用验证。项目价值在于可检查、可复现的流程，不宣称 GitHub 全球首创。
+Tiny VLA 是随机初始化的小型参考模型，**不是预训练大模型**。LeRobot 环境契约与产物回收已有回归测试，但本版本不宣称完成了真实 SmolVLA/CUDA 训练。项目价值在于可检查、可复现的流程，不替代 LeRobot。
 
 ## 安装与启动
 
@@ -52,11 +52,13 @@ vla-preflight compare runs/first runs/resumed --output reports/comparison.json
 
 ```shell
 vla-preflight doctor --output reports/doctor.json
-vla-preflight robot-plan examples/robot.example.json --output runs/robot-plan
-vla-preflight rollout-eval examples/rollouts.example.jsonl --output reports/rollouts.json
+python -m pip install -e ".[robot]"
+vla-preflight robot-check robot.json --output reports/robot-check.json
+vla-preflight robot-plan robot.json --preflight reports/robot-check.json --output runs/robot-plan
+vla-preflight rollout-import rollouts.jsonl --protocol evaluation-protocol.json --robot-plan runs/robot-plan/plan.json --checkpoint model.safetensors --dataset-digest SHA256 --output runs/rollout-session
 ```
 
-仓库中的机械臂示例故意保持阻塞状态。只有现场测试急停、清空工作区并修改对应声明后，`robot-plan` 才会标记为可进入有人监督的低速联调。它只生成 `plan.json` 和 `RUNBOOK.md`，不会打开串口、相机或电机。完整说明见[硬件工作流程](docs/hardware.md)。
+仓库中的机械臂示例故意保持阻塞状态。`robot-check` 会实际枚举串口并读取每个相机的三帧图像，但不会打开串口或接触电机。现场测试急停、清空工作区且所有检查通过后，`robot-plan` 才会生成有人监督的低速联调方案。完整说明见[硬件工作流程](docs/hardware.md)。
 
 ## 当前边界
 

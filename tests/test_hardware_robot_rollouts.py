@@ -4,8 +4,9 @@ from types import SimpleNamespace
 import pytest
 
 from vla_preflight.bridge import inspect_lerobot
+from vla_preflight.cli import main
 from vla_preflight.hardware import doctor
-from vla_preflight.robot import check_robot, create_robot_plan
+from vla_preflight.robot import check_robot, create_robot_plan, write_robot_check
 from vla_preflight.rollouts import (
     compare_rollout_sessions,
     create_rollout_session,
@@ -140,6 +141,8 @@ def test_robot_check_reports_missing_devices_and_skips(tmp_path):
         command_finder=lambda _: "available",
     )
     assert skipped["status"] == "incomplete" and not skipped["ready"]
+    with pytest.raises(ValueError, match="must not overwrite"):
+        write_robot_check(config, config, probe_ports=False, probe_cameras=False)
 
 
 def test_rollout_evaluation_reports_uncertainty_and_failures(tmp_path):
@@ -180,6 +183,7 @@ def test_rollout_duplicate_and_empty_rejected(tmp_path):
 
 
 def session_inputs(tmp_path):
+    tmp_path.mkdir(parents=True, exist_ok=True)
     protocol = tmp_path / "protocol.json"
     protocol.write_text(
         json.dumps(
@@ -274,3 +278,49 @@ def test_rollout_session_enforces_protocol(tmp_path):
             checkpoint=checkpoint,
             dataset_digest="a" * 64,
         )
+
+
+def test_new_cli_workflows_write_artifacts(tmp_path):
+    doctor_path = tmp_path / "doctor.json"
+    assert main(["doctor", "--output", str(doctor_path)]) == 0
+    assert json.loads(doctor_path.read_text())["schema"] == "vla-preflight.doctor/1"
+
+    config = robot_config(tmp_path)
+    check_path = tmp_path / "robot-check.json"
+    assert (
+        main(
+            [
+                "robot-check",
+                str(config),
+                "--output",
+                str(check_path),
+                "--skip-ports",
+                "--skip-cameras",
+            ]
+        )
+        == 1
+    )
+    assert json.loads(check_path.read_text())["status"] in ("failed", "incomplete")
+
+    log, protocol, plan, checkpoint = session_inputs(tmp_path / "session-inputs")
+    session = tmp_path / "cli-session"
+    assert (
+        main(
+            [
+                "rollout-import",
+                str(log),
+                "--protocol",
+                str(protocol),
+                "--robot-plan",
+                str(plan),
+                "--checkpoint",
+                str(checkpoint),
+                "--dataset-digest",
+                "a" * 64,
+                "--output",
+                str(session),
+            ]
+        )
+        == 0
+    )
+    assert main(["rollout-compare", str(session), str(session)]) == 0

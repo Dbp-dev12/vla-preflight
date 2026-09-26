@@ -178,12 +178,13 @@ def check_robot(
 
     if probe_ports:
         try:
-            available = set(port_provider())
+            available = {port.casefold() for port in port_provider()}
             for role, port in (("robot", config.robot_port), ("teleop", config.teleop_port)):
+                present = port.casefold() in available
                 add(
                     "SERIAL_PORT",
-                    "pass" if port in available else "fail",
-                    f"Declared {role} port is {'present' if port in available else 'absent'}",
+                    "pass" if present else "fail",
+                    f"Declared {role} port is {'present' if present else 'absent'}",
                     role=role,
                     port=port,
                 )
@@ -242,6 +243,8 @@ def check_robot(
 
 
 def write_robot_check(config_path: Path, destination: Path, **options):
+    if config_path.resolve() == destination.resolve():
+        raise ValueError("Robot-check report must not overwrite its config")
     report = check_robot(config_path, **options)
     atomic_json(destination, report)
     return report
@@ -334,7 +337,7 @@ def create_robot_plan(config_path: Path, destination: Path, *, preflight: Path |
             "2. Run supervised low-speed teleoperation and inspect every camera.",
             "3. Record a short disposable dataset and run `vla-preflight audit`.",
             "4. Train and evaluate offline before any policy rollout.",
-            "5. Log every physical rollout and summarize it with `vla-preflight rollout-eval`.",
+            "5. Bind every physical rollout with `vla-preflight rollout-import`.",
         ]
     )
     (destination / "RUNBOOK.md").write_text("\n".join(lines) + "\n", encoding="utf-8")

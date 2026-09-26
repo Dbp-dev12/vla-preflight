@@ -71,13 +71,23 @@ def inspect_lerobot(python: str, *, device="cuda", runner=None):
     if device not in ("cpu", "cuda"):
         raise ValueError("device must be cpu or cuda")
     script = r"""
-import importlib.metadata, importlib.util, json, platform, sys
+import importlib, importlib.metadata, json, platform, sys
+def can_import(name):
+    try:
+        importlib.import_module(name)
+        return True, None
+    except Exception as exc:
+        return False, type(exc).__name__
+train_module, train_error = can_import("lerobot.scripts.lerobot_train")
+smolvla_module, smolvla_error = can_import("lerobot.policies.smolvla")
 result = {
     "python": platform.python_version(),
     "executable": sys.executable,
     "lerobot_version": importlib.metadata.version("lerobot"),
-    "train_module": importlib.util.find_spec("lerobot.scripts.lerobot_train") is not None,
-    "smolvla_module": importlib.util.find_spec("lerobot.policies.smolvla") is not None,
+    "train_module": train_module,
+    "train_error": train_error,
+    "smolvla_module": smolvla_module,
+    "smolvla_error": smolvla_error,
 }
 try:
     import torch
@@ -130,6 +140,7 @@ print(json.dumps(result))
         "tool_version": __version__,
         "status": "compatible" if all(checks.values()) else "incompatible",
         "compatible": all(checks.values()),
+        "requested_python": python,
         "requested_device": device,
         "checks": checks,
         "observed": observed,
@@ -149,6 +160,8 @@ def _environment(path: Path, options: SmolOptions):
         raise ValueError("Unsupported LeRobot environment report")
     if not report.get("compatible"):
         raise ValueError("LeRobot environment report is incompatible")
+    if report.get("requested_python") != options.python:
+        raise ValueError("LeRobot environment report checked a different Python executable")
     if report.get("requested_device") != options.device:
         raise ValueError("LeRobot environment report checked a different device")
     return report
@@ -187,7 +200,7 @@ def create_smol_plan(
         "limits": [
             "Execution is delegated to the separately checked LeRobot environment.",
             "Model memory use has not been measured; validate it on the target system.",
-            "This adapter launches fine-tuning; external model evaluation is not implemented.",
+            "Training does not run policy evaluation; bind outcomes with rollout-import.",
             "Only the built-in tiny-vla backend has end-to-end local validation in v0.6.",
         ],
     }
@@ -214,7 +227,7 @@ def launch_smol(plan_dir: Path):
         with (plan_dir / "external.log").open("w", encoding="utf-8") as log:
             process = subprocess.Popen(command, cwd=plan_dir, stdout=log, stderr=subprocess.STDOUT)
             code = process.wait()
-        checkpoints = list((plan_dir / "artifacts").rglob("*.safetensors"))
+        checkpoints = sorted((plan_dir / "artifacts").rglob("*.safetensors"))
         checkpoint_files = [
             {
                 "path": str(path.relative_to(plan_dir)),

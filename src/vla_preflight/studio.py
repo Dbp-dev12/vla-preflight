@@ -15,7 +15,7 @@ from importlib.resources import files
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
 
 from . import __version__
 from .analysis import prepare, profile_dataset
@@ -39,6 +39,15 @@ class JobRequest(BaseModel):
     chunk_size: StrictInt = Field(default=4, ge=1, le=64)
     exclude: list[StrictInt] = Field(default_factory=list)
     python: str | None = None
+    config_path: str | None = Field(default=None, max_length=1000)
+    preflight_path: str | None = Field(default=None, max_length=1000)
+    rollout_log: str | None = Field(default=None, max_length=1000)
+    protocol_path: str | None = Field(default=None, max_length=1000)
+    robot_plan_path: str | None = Field(default=None, max_length=1000)
+    checkpoint_path: str | None = Field(default=None, max_length=1000)
+    dataset_digest: str | None = Field(default=None, pattern=r"^[0-9a-fA-F]{64}$")
+    probe_ports: StrictBool = True
+    probe_cameras: StrictBool = True
 
 
 class Workspace:
@@ -69,7 +78,17 @@ class Workspace:
             atomic_json(self.output / "jobs" / f"{job_id}.json", self.jobs[job_id])
 
     def start(self, request: JobRequest):
-        if request.kind not in ("analyze", "prepare", "export", "train", "smol-plan"):
+        if request.kind not in (
+            "analyze",
+            "prepare",
+            "export",
+            "train",
+            "smol-plan",
+            "doctor",
+            "robot-check",
+            "robot-plan",
+            "rollout-import",
+        ):
             raise ValueError("Unsupported workbench job")
         with self.lock:
             if any(j["status"] in ("queued", "running") for j in self.jobs.values()):
@@ -139,7 +158,7 @@ class Workspace:
                 if result["status"] == "cancelled":
                     self._update(job_id, status="cancelled", artifact=artifact)
                     return
-            else:
+            elif req.kind == "smol-plan":
                 from .bridge import SmolOptions, create_smol_plan, inspect_lerobot
 
                 values = {"steps": req.steps, "batch_size": req.batch_size, "seed": req.seed}
@@ -157,6 +176,59 @@ class Workspace:
                     environment_report=environment_path,
                 )
                 artifact = f"smol-plans/{job_id}"
+            elif req.kind == "doctor":
+                from .hardware import doctor
+
+                target = self.output / "doctor" / f"{job_id}.json"
+                atomic_json(target, doctor())
+                artifact = f"doctor/{job_id}.json"
+            elif req.kind == "robot-check":
+                from .robot import write_robot_check
+
+                if not req.config_path:
+                    raise ValueError("Robot config path is required")
+                target = self.output / "robot-checks" / f"{job_id}.json"
+                write_robot_check(
+                    Path(req.config_path),
+                    target,
+                    probe_ports=req.probe_ports,
+                    probe_cameras=req.probe_cameras,
+                )
+                artifact = f"robot-checks/{job_id}.json"
+            elif req.kind == "robot-plan":
+                from .robot import create_robot_plan
+
+                if not req.config_path or not req.preflight_path:
+                    raise ValueError("Robot config and preflight report paths are required")
+                create_robot_plan(
+                    Path(req.config_path),
+                    self.output / "robot-plans" / job_id,
+                    preflight=Path(req.preflight_path),
+                )
+                artifact = f"robot-plans/{job_id}"
+            else:
+                from .rollouts import create_rollout_session
+
+                required = (
+                    req.rollout_log,
+                    req.protocol_path,
+                    req.robot_plan_path,
+                    req.checkpoint_path,
+                    req.dataset_digest,
+                )
+                if not all(required):
+                    raise ValueError(
+                        "Rollout log, protocol, robot plan, checkpoint and digest required"
+                    )
+                create_rollout_session(
+                    Path(req.rollout_log),
+                    Path(req.protocol_path),
+                    self.output / "rollouts" / job_id,
+                    robot_plan=Path(req.robot_plan_path),
+                    checkpoint=Path(req.checkpoint_path),
+                    dataset_digest=req.dataset_digest,
+                )
+                artifact = f"rollouts/{job_id}"
             self._update(job_id, status="completed", artifact=artifact)
         except Exception as exc:
             self._update(job_id, status="failed", error=str(exc))
@@ -201,6 +273,73 @@ class Workspace:
                     except ValueError:
                         pass  # a writer may currently be appending the last line
             runs.append(run)
+        doctor_reports = []
+        for path in sorted((self.output / "doctor").glob("*.json")):
+            item = load_json(path)
+            doctor_reports.append(
+                {
+                    "id": path.stem,
+                    "tier": item.get("recommendation", {}).get("tier"),
+                    "cuda": item.get("cuda", {}),
+                }
+            )
+        robot_checks = []
+        for path in sorted((self.output / "robot-checks").glob("*.json")):
+            item = load_json(path)
+            robot_checks.append(
+                {
+                    "id": path.stem,
+                    "status": item.get("status"),
+                    "ready": item.get("ready", False),
+                    "checks": item.get("checks", []),
+                }
+            )
+        robot_plans = []
+        for path in sorted((self.output / "robot-plans").glob("*/plan.json")):
+            item = load_json(path)
+            robot_plans.append(
+                {
+                    "id": path.parent.name,
+                    "status": item.get("status"),
+                    "safe_to_start": item.get("safe_to_start", False),
+                    "name": item.get("config", {}).get("name"),
+                }
+            )
+        rollout_sessions = []
+        for path in sorted((self.output / "rollouts").glob("*/manifest.json")):
+            item = load_json(path)
+            rollout_sessions.append(
+                {
+                    "id": path.parent.name,
+                    "status": item.get("status"),
+                    "protocol": item.get("protocol", {}).get("protocol_id"),
+                    "episodes": item.get("episodes"),
+                    "required_episodes": item.get("required_episodes"),
+                    "overall": item.get("summary", {}).get("overall"),
+                }
+            )
+        lerobot_environments = []
+        for path in sorted((self.output / "environment").glob("*.json")):
+            item = load_json(path)
+            lerobot_environments.append(
+                {
+                    "id": path.stem,
+                    "status": item.get("status"),
+                    "version": item.get("observed", {}).get("lerobot_version"),
+                    "cuda": item.get("observed", {}).get("cuda_available"),
+                }
+            )
+        external_runs = []
+        for path in sorted((self.output / "smol-plans").glob("*/external-run.json")):
+            item = load_json(path)
+            external_runs.append(
+                {
+                    "id": path.parent.name,
+                    "status": item.get("status"),
+                    "checkpoints": len(item.get("checkpoint_files", [])),
+                    "peak_memory_gib": item.get("measured_peak_memory_gib"),
+                }
+            )
         return {
             "version": __version__,
             "dataset": self.root.name,
@@ -212,6 +351,14 @@ class Workspace:
             "analysis": analysis,
             "prepared": prepared,
             "runs": runs,
+            "evidence": {
+                "doctor": doctor_reports,
+                "robot_checks": robot_checks,
+                "robot_plans": robot_plans,
+                "rollout_sessions": rollout_sessions,
+                "lerobot_environments": lerobot_environments,
+                "external_runs": external_runs,
+            },
             "jobs": jobs,
         }
 

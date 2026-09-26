@@ -9,7 +9,7 @@ from vla_preflight.analysis import Moments, prepare, split_episodes
 from vla_preflight.contract import load_json
 from vla_preflight.dataset import Dataset
 from vla_preflight.export import export_episodes
-from vla_preflight.workflow_io import episode_records, fingerprint, load_prepared
+from vla_preflight.workflow_io import atomic_json, episode_records, fingerprint, load_prepared
 
 
 @pytest.fixture
@@ -84,7 +84,7 @@ def test_export_preserves_source_and_images(visual, tmp_path):
 
 
 def test_smol_plan_is_train_only_without_execution(visual, tmp_path, monkeypatch):
-    from vla_preflight.bridge import create_smol_plan, launch_smol
+    from vla_preflight.bridge import SmolOptions, create_smol_plan, launch_smol
 
     prepared = tmp_path / "prepared"
     prepare(visual, prepared)
@@ -94,13 +94,19 @@ def test_smol_plan_is_train_only_without_execution(visual, tmp_path, monkeypatch
             {
                 "schema": "vla-preflight.lerobot-environment/1",
                 "compatible": True,
+                "requested_python": "python-for-test",
                 "requested_device": "cuda",
                 "observed": {"lerobot_version": "0.6.2"},
             }
         ),
         encoding="utf-8",
     )
-    result = create_smol_plan(prepared, tmp_path / "plan", environment_report=environment)
+    result = create_smol_plan(
+        prepared,
+        tmp_path / "plan",
+        options=SmolOptions(python="python-for-test"),
+        environment_report=environment,
+    )
     split = load_json(prepared / "split.json")
     export = load_json(tmp_path / "plan/train-dataset/export-status.json")
     assert set(map(int, export["episode_mapping"])) == set(split["train"])
@@ -150,7 +156,10 @@ def test_http_host_origin_token_and_actual_job(visual, tmp_path):
         return status, body
 
     try:
-        assert request("GET", "/api/state")[0] == 200
+        status, body = request("GET", "/api/state")
+        assert status == 200 and "evidence" in json.loads(body)
+        status, body = request("GET", "/")
+        assert status == 200 and "硬件与实机" in body.decode()
         assert request("GET", "/", headers={"Host": "evil.example"})[0] == 403
         assert request("POST", "/api/jobs", {"kind": "analyze"})[0] == 403
         headers = {"Origin": f"http://{host}", "X-Preflight-Token": workspace.token}
@@ -166,4 +175,61 @@ def test_http_host_origin_token_and_actual_job(visual, tmp_path):
         server.shutdown()
         server.server_close()
         thread.join()
+        workspace.close()
+
+
+def test_workspace_indexes_hardware_and_rollout_evidence(visual, tmp_path):
+    from vla_preflight.studio import JobRequest, Workspace
+
+    workspace = Workspace(visual, tmp_path / "studio-evidence")
+    job_id = workspace.start(JobRequest(kind="doctor"))
+    workspace.pool.shutdown(wait=True)
+    try:
+        snapshot = workspace.snapshot()
+        assert workspace.jobs[job_id]["status"] == "completed"
+        assert len(snapshot["evidence"]["doctor"]) == 1
+        atomic_json(
+            workspace.output / "robot-checks/check.json",
+            {"status": "passed", "ready": True, "checks": [{"status": "pass"}]},
+        )
+        atomic_json(
+            workspace.output / "robot-plans/plan/plan.json",
+            {
+                "status": "ready-for-supervised-bringup",
+                "safe_to_start": True,
+                "config": {"name": "arm"},
+            },
+        )
+        atomic_json(
+            workspace.output / "rollouts/session/manifest.json",
+            {
+                "status": "complete",
+                "protocol": {"protocol_id": "p1"},
+                "episodes": 20,
+                "required_episodes": 20,
+                "summary": {"overall": {"success_rate": 0.5}},
+            },
+        )
+        atomic_json(
+            workspace.output / "environment/env.json",
+            {
+                "status": "compatible",
+                "observed": {"lerobot_version": "0.6.2", "cuda_available": True},
+            },
+        )
+        atomic_json(
+            workspace.output / "smol-plans/run/external-run.json",
+            {
+                "status": "completed",
+                "checkpoint_files": [{"path": "model.safetensors"}],
+                "measured_peak_memory_gib": 5.5,
+            },
+        )
+        evidence = workspace.snapshot()["evidence"]
+        assert evidence["robot_checks"][0]["ready"]
+        assert evidence["robot_plans"][0]["safe_to_start"]
+        assert evidence["rollout_sessions"][0]["protocol"] == "p1"
+        assert evidence["lerobot_environments"][0]["version"] == "0.6.2"
+        assert evidence["external_runs"][0]["checkpoints"] == 1
+    finally:
         workspace.close()

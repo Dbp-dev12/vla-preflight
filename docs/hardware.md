@@ -15,10 +15,14 @@ The report includes Python, operating system family, installed package versions,
 Copy `examples/robot.example.json` and edit the robot, teleoperator, camera, dataset and task fields. Keep the safety gates false until they have been physically checked. Calibration paths are resolved relative to the config file and their SHA-256 digests are recorded.
 
 ```shell
-vla-preflight robot-plan robot.json --output runs/robot-plan
+python -m pip install -e ".[robot]"
+vla-preflight robot-check robot.json --output reports/robot-check.json
+vla-preflight robot-plan robot.json --preflight reports/robot-check.json --output runs/robot-plan
 ```
 
-Exit code 1 means a safety or calibration gate is blocked. Exit code 0 means the declarations allow supervised low-speed bring-up; it does not certify the hardware. The generated `RUNBOOK.md` preserves an ordered review process and `plan.json` stores commands as argument arrays to avoid shell ambiguity.
+`robot-check` enumerates serial devices without opening them, reads three frames from each configured camera, checks expected dimensions and nonconstant pixels, hashes calibration files, verifies LeRobot commands, and records the four safety declarations. A skipped port or camera probe makes the report incomplete rather than passed. It never connects to motors.
+
+`robot-plan` refuses a report from a different configuration and blocks any report that is failed or incomplete. Exit code 0 means the evidence allows supervised low-speed bring-up; it does not certify the hardware. The generated `RUNBOOK.md` preserves an ordered review process and `plan.json` stores commands as argument arrays to avoid shell ambiguity.
 
 Command shapes follow the current official [LeRobot recording script](https://github.com/huggingface/lerobot/blob/main/src/lerobot/scripts/lerobot_record.py) and [teleoperation script](https://github.com/huggingface/lerobot/blob/main/src/lerobot/scripts/lerobot_teleoperate.py). Review them against the installed LeRobot version before execution.
 
@@ -35,7 +39,7 @@ Keep a held-out evaluation protocol, object layout and reset procedure fixed bef
 
 ## 4. Record task-level outcomes
 
-Write one JSON object per physical or simulated episode:
+Define the success and reset rules before collecting results using `examples/evaluation-protocol.example.json`, then write one JSON object per physical or simulated episode:
 
 ```json
 {"episode_id":"eval-001","success":true,"duration_s":12.4,"interventions":0,"task":"red block to bowl","checkpoint":"policy-10000","dataset_digest":"..."}
@@ -44,7 +48,24 @@ Write one JSON object per physical or simulated episode:
 Then summarize it:
 
 ```shell
-vla-preflight rollout-eval rollouts.jsonl --output reports/rollouts.json
+vla-preflight rollout-import rollouts.jsonl \
+  --protocol evaluation-protocol.json \
+  --robot-plan runs/robot-plan/plan.json \
+  --checkpoint model.safetensors \
+  --dataset-digest SHA256 \
+  --output runs/rollout-session
 ```
 
-The report includes the observed success rate and a Wilson 95% interval. It also separates tasks and checkpoints and counts human interventions and failure modes. The interval captures binomial sampling uncertainty only; it does not correct for operator bias, task selection, resets or changing physical conditions.
+The session includes normalized episodes, an identity-bound manifest, summary JSON and offline HTML. It includes the observed success rate and a Wilson 95% interval, interventions and failure modes. `rollout-compare` permits direct comparison only when protocol, robot plan and dataset digests match. The interval captures binomial sampling uncertainty only; it does not correct for operator bias, task selection, resets or changing physical conditions.
+
+## 5. External LeRobot training
+
+Create a separate Python 3.12 environment with LeRobot 0.6.x and the SmolVLA extra. Check it before planning:
+
+```shell
+vla-preflight lerobot-check --python /path/to/lerobot/python --device cuda --output reports/lerobot.json
+vla-preflight smol-plan runs/prepared --python /path/to/lerobot/python --environment-report reports/lerobot.json --output runs/smol-plan
+vla-preflight smol-launch runs/smol-plan
+```
+
+VLA Preflight does not implement a competing foundation-model trainer. It delegates the process to `lerobot.scripts.lerobot_train` and retains an `external-run.json` with the environment/data identities, exit status, checkpoint hashes and peak memory when the external log reports one.

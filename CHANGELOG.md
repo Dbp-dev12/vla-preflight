@@ -2,14 +2,16 @@
 
 ## 0.6.0 — 2026-09-26
 
-- Privacy-conscious `doctor` report for CUDA devices, VRAM, packages and LeRobot command availability.
-- Low-memory SmolVLA plans now expose gradient accumulation and gradient checkpointing.
-- Validated robot/camera/teleoperator declarations with calibration hashes and four explicit safety gates.
-- Reviewable `lerobot-teleoperate` and `lerobot-record` command generation; the tool never opens hardware.
-- Rollout JSONL evaluation with task/checkpoint slices, interventions, failure modes and Wilson intervals.
-- Hardware runbook, safe blocked example and regression coverage for the new workflow.
+- Non-actuating robot preflight: serial enumeration, three-frame camera probes, calibration hashes, LeRobot command discovery and explicit safety/coverage gates.
+- Robot plans require a passing preflight report bound to the exact configuration digest.
+- External LeRobot 0.6.x/Python 3.12/CUDA compatibility reports are required before SmolVLA planning.
+- Low-memory plans expose gradient accumulation and checkpointing; execution remains delegated to LeRobot.
+- External runs retain data/environment identity, exit status, checkpoint hashes and logged peak memory.
+- First-class rollout sessions bind protocol, robot plan, dataset and checkpoint identities and prevent invalid comparisons.
+- The local workbench indexes compute, robot, external-training and rollout evidence in a fifth workflow page.
+- Versioned examples, acceptance record, hardware runbook and regression coverage for the full workflow.
 
-Still alpha: physical control and pretrained-model execution remain external and require supervised validation.
+Still alpha: motor control remains external and physical checks require supervised validation.
 
 ## 0.2.0 — 2026-09-26
 

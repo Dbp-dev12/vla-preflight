@@ -31,21 +31,21 @@ Only load checkpoints you trust. Resume requires the same bundle/camera/model sh
 
 ## Compute and physical evaluation
 
-`doctor` records a shareable compute inventory without machine identity or absolute paths. Its VRAM tier is guidance only; it is not a pretrained-model memory benchmark.
+`doctor` records a shareable compute inventory without machine identity or absolute paths. Its VRAM tier is guidance only; it is not a pretrained-model memory benchmark. `lerobot-check` separately validates the Python 3.12 / LeRobot 0.6.x environment used for actual pretrained training.
 
-`robot-plan` validates a strict robot declaration, hashes available calibration files and blocks the plan unless the emergency stop, cleared workspace, low-speed first run and human supervision are all declared. It generates argument arrays and a runbook but never imports a hardware driver or executes a command.
+`robot-check` enumerates serial ports without opening them and reads three frames from declared cameras. It hashes calibration files, checks LeRobot commands and safety declarations, and exposes explicit coverage. `robot-plan` requires a passing report bound to the exact same configuration. It generates argument arrays and a runbook but never imports a robot driver or executes a command.
 
-`rollout-eval` validates unique episode IDs and reports observed success, Wilson 95% intervals, duration, interventions and failure modes overall and by task/checkpoint. These are task-level observations, not a causal comparison or safety certificate. See [hardware.md](hardware.md).
+`rollout-import` validates unique episode IDs and creates a first-class session bound to an evaluation protocol, robot plan, dataset digest and checkpoint hash. It reports observed success, Wilson 95% intervals, duration, interventions and failure modes. `rollout-compare` requires matching protocol, robot and dataset identities. These are task-level observations, not a causal comparison or safety certificate. See [hardware.md](hardware.md).
 
 Host checks, same-origin checks and session tokens protect mutation endpoints. Do not expose this single-user server to a network. Paths, task text and evidence remain local; exported reports should be reviewed before sharing.
 
-## Export and experimental SmolVLA
+## Export and external SmolVLA
 
 Export selects complete episodes, materializes path-based images, copies videos unchanged, reindexes IDs, preserves timestamps and recomputes numeric statistics. export-status.json is complete only after local verification. Visual statistics are not produced. Shared video files can contain excluded footage; this is not privacy redaction.
 
 `smol-plan` exports only training episodes and constructs an external LeRobot command: frozen vision encoder, expert-only training, gradient checkpointing, batch size 1 and eight-step gradient accumulation by default, uploads/W&B disabled. `smol-launch` explicitly executes it and records external.log/status; it may download weights. A successful process must also leave a safetensors checkpoint.
 
-The bridge has not been validated against a live pretrained-model run or upstream dataset loader. No external-model held-out evaluation, camera remapping, arbitrary processors, or guaranteed memory configuration is provided. Review upstream requirements before execution. Tiny VLA is the fully exercised training backend.
+The bridge contract is tested with a separate-process double, not a live pretrained-model run. It requires an importable LeRobot 0.6.x environment and requested CUDA device, then delegates training to LeRobot. No camera remapping, arbitrary processors or guaranteed memory configuration is provided. Physical outcomes must be imported through an identity-bound rollout session. Review upstream requirements before execution.
 
 ## Resources
 

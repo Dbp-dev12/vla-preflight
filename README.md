@@ -13,12 +13,12 @@ v0.6.0 alpha keeps the laptop-only path and adds a careful path for users with C
 | Train | Run a randomly initialized image + byte-text + state model with masked action chunks and held-out evaluation |
 | Compare | Record baselines, loss curves, last/best checkpoints, sampler traces and compatible resumed runs |
 | Export | Filter episodes into a new v3 dataset, reindex and recompute numeric statistics |
-| Extend | Generate an **experimental** SmolVLA plan with a physically separate training split |
+| Extend | Check a LeRobot 0.6 environment and generate a SmolVLA plan with a separate training split |
 | Diagnose | Report CUDA devices, VRAM, optional packages and LeRobot commands without hostnames, usernames or paths |
 | Bring up | Validate a declared robot/camera/calibration setup and generate reviewable teleoperation/recording commands |
 | Evaluate | Summarize rollout success, interventions, failure modes and Wilson confidence intervals by task/checkpoint |
 
-Tiny VLA is a reference trainer, **not a pretrained foundation model**. Offline action error is not robot task success. SmolVLA execution and memory use have not been validated. This project does not claim novelty over every GitHub repository or replace LeRobot.
+Tiny VLA is a reference trainer, **not a pretrained foundation model**. Offline action error is not robot task success. The LeRobot bridge and artifact capture are regression-tested, but this release does not claim a live SmolVLA/CUDA result. This project does not replace LeRobot.
 
 ## Start locally
 
@@ -65,21 +65,24 @@ The final command intentionally exits 1 and detects `WINDOW_CROSS_EPISODE`. Audi
 
 ```shell
 vla-preflight doctor --output reports/doctor.json
-vla-preflight robot-plan examples/robot.example.json --output runs/robot-plan
-vla-preflight rollout-eval examples/rollouts.example.jsonl --output reports/rollouts.json
+python -m pip install -e ".[robot]"
+vla-preflight robot-check robot.json --output reports/robot-check.json
+vla-preflight robot-plan robot.json --preflight reports/robot-check.json --output runs/robot-plan
+vla-preflight rollout-import rollouts.jsonl --protocol evaluation-protocol.json --robot-plan runs/robot-plan/plan.json --checkpoint model.safetensors --dataset-digest SHA256 --output runs/rollout-session
 ```
 
-The checked-in robot example is intentionally blocked until the emergency stop and workspace gates are changed after physical verification. `robot-plan` only writes `plan.json` and `RUNBOOK.md`; it does not open ports, cameras or motors. Generated recording commands follow the current upstream `lerobot-record` interface. See the [hardware workflow](docs/hardware.md).
+The checked-in robot example is intentionally blocked until the emergency stop and workspace gates are changed after physical verification. `robot-check` enumerates serial ports and reads three frames from every camera but never opens a serial port or contacts motors. `robot-plan` requires a passing report and only writes `plan.json` and `RUNBOOK.md`. See the [hardware workflow](docs/hardware.md).
 
-## Experimental pretrained-model bridge
+## External pretrained-model bridge
 
 ```shell
-vla-preflight smol-plan runs/prepared --output runs/smol-plan --python /path/to/lerobot-env/bin/python --gradient-accumulation 8
+vla-preflight lerobot-check --python /path/to/lerobot-env/bin/python --device cuda --output reports/lerobot.json
+vla-preflight smol-plan runs/prepared --output runs/smol-plan --python /path/to/lerobot-env/bin/python --environment-report reports/lerobot.json --gradient-accumulation 8
 # Explicit launch: may download weights and use your GPU.
 vla-preflight smol-launch runs/smol-plan
 ```
 
-Use a separate environment compatible with [LeRobot](https://github.com/huggingface/lerobot) and [SmolVLA](https://huggingface.co/docs/lerobot/smolvla). Plans default to batch size 1, eight-step gradient accumulation, gradient checkpointing, a frozen vision encoder and expert-only training. The bridge does not install LeRobot, guarantee upstream format/API compatibility, provide external-model evaluation, or claim measured memory requirements. Opening the workbench or generating a plan never downloads a model.
+Use a separate Python 3.12 environment with LeRobot 0.6.x and SmolVLA installed. The compatibility check verifies the train/SmolVLA modules and requested CUDA device before planning. Plans default to batch size 1, eight-step gradient accumulation, gradient checkpointing, a frozen vision encoder and expert-only training. VLA Preflight delegates training to LeRobot, then records exit status, checkpoint hashes and any peak-memory value emitted by the external log. Planning never downloads a model.
 
 ## Scope and adoption
 

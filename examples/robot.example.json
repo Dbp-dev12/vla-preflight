@@ -18,7 +18,7 @@
   "dataset_repo_id": "your-name/so101-task",
   "task": "Pick up the red block and place it in the bowl",
   "num_episodes": 30,
-  "calibration_files": [],
+  "calibration_files": ["calibration.example.json"],
   "safety": {
     "emergency_stop_tested": false,
     "workspace_cleared": false,

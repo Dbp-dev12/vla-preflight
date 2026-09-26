@@ -6,20 +6,21 @@ identifiers and other machine-specific information are intentionally omitted.
 
 | Check | Observed result |
 |---|---|
-| Regression suite | 116 tests passed |
+| Regression suite | 122 tests passed |
 | Synthetic fault matrix | 20/20 expected outcomes |
 | Real gradient updates | Image, text, state and prediction-head weights changed |
 | CPU resume | Exact parameter equality versus uninterrupted training |
 | Preparation | Train-only statistics, grouped splits and mutation rejection tested |
 | Export | Source unchanged; image/action contents preserved with remapped IDs |
 | Video decoding | Encoded test clip decoded with a nonzero episode start offset |
-| Workbench | Preview, preparation, training, comparison and export exercised |
+| Workbench | Data, training, hardware/evidence API state and packaged UI exercised |
 | Public numeric data | Pinned PushT revision: 206 episodes and 25,650 frames |
 | Installed wheel | Independent install, web routes and training smoke passed |
 | Lint, format and build | Passed |
 | Compute doctor | Privacy fields and recommendation selection covered |
-| Robot plan | Safety gates, calibration hashes and generated commands covered |
-| Rollout evaluation | Validation, grouping, failure modes and Wilson interval covered |
+| Robot preflight | Port/camera/tool failures, skipped coverage and config binding covered with fakes |
+| LeRobot bridge | Version/CUDA contract, required report, external checkpoint hashes and memory parsing covered |
+| Rollout session | Protocol enforcement, identity binding, comparison gates and Wilson interval covered |
 
 Workbench testing found and fixed delayed saving of numeric form values. No console
 errors were observed in the exercised flows. These are manual browser checks, not an
@@ -66,11 +67,11 @@ revision and content hashes are recorded in [public-pusht.json](evidence/public-
 
 ## Not established
 
-- SmolVLA or another pretrained-model training run.
+- A live SmolVLA or another pretrained-model training run; external execution is tested with a process double.
 - Upstream-loader compatibility of exported datasets.
 - External-model held-out evaluation, memory requirements or CUDA reproducibility.
 - Robot task success, simulator rollout performance or real-data generalization.
-- Physical port/camera access, emergency-stop behavior and calibration correctness.
+- Physical port/camera access, emergency-stop behavior and calibration correctness; probes use test doubles in CI.
 - Real rollout outcome quality; only the aggregation implementation is tested synthetically.
 - Large-corpus memory/performance or semantic duplicate detection.
 - Remote CI results until the corresponding workflow has completed.

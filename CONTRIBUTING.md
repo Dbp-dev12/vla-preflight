@@ -24,7 +24,8 @@ PyTorch/CUDA optional by avoiding them entirely in the core. No credentials, dat
 large weights or private reports belong in git. Review evidence before attaching it
 to an issue. Changes to the contract must update `examples/contract.schema.json`.
 
-Install `.[dev,train]` for workflow/training tests; optional tests otherwise skip.
+Install `.[dev,train,robot]` for the full workflow, training and physical-probe environment.
+Robot unit tests use fakes and do not access hardware. Manual probe reports must remain local.
 Use CPU PyTorch wheels when CUDA is unnecessary. Preserve train/validation separation,
 source immutability and honest baseline reporting when extending the trainer.
 
