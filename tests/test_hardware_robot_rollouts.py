@@ -6,7 +6,12 @@ import pytest
 from vla_preflight.bridge import inspect_lerobot
 from vla_preflight.hardware import doctor
 from vla_preflight.robot import check_robot, create_robot_plan
-from vla_preflight.rollouts import evaluate_rollouts, write_rollout_evaluation
+from vla_preflight.rollouts import (
+    compare_rollout_sessions,
+    create_rollout_session,
+    evaluate_rollouts,
+    write_rollout_evaluation,
+)
 
 
 def robot_config(tmp_path, **safety):
@@ -172,3 +177,100 @@ def test_rollout_duplicate_and_empty_rejected(tmp_path):
         evaluate_rollouts(duplicate)
     with pytest.raises(ValueError, match="must not overwrite"):
         write_rollout_evaluation(duplicate, duplicate)
+
+
+def session_inputs(tmp_path):
+    protocol = tmp_path / "protocol.json"
+    protocol.write_text(
+        json.dumps(
+            {
+                "protocol_id": "pick-v1",
+                "task": "pick",
+                "success_definition": (
+                    "Object is lifted above the marked line without human contact."
+                ),
+                "reset_procedure": "Return home and place the object on the marked start position.",
+                "environment": "fixed table",
+                "required_episodes": 2,
+                "max_duration_s": 30,
+                "allowed_failure_modes": ["drop"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    plan = tmp_path / "plan.json"
+    plan.write_text(
+        json.dumps(
+            {
+                "schema": "vla-preflight.robot-plan/1",
+                "safe_to_start": True,
+                "config": {"name": "arm"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    checkpoint = tmp_path / "model.safetensors"
+    checkpoint.write_bytes(b"policy")
+    log = tmp_path / "rollouts.jsonl"
+    log.write_text(
+        "\n".join(
+            json.dumps(item)
+            for item in (
+                {"episode_id": "a", "success": True, "duration_s": 10, "task": "pick"},
+                {
+                    "episode_id": "b",
+                    "success": False,
+                    "duration_s": 12,
+                    "task": "pick",
+                    "failure_mode": "drop",
+                },
+            )
+        ),
+        encoding="utf-8",
+    )
+    return log, protocol, plan, checkpoint
+
+
+def test_rollout_session_binds_identity_and_is_comparable(tmp_path):
+    log, protocol, plan, checkpoint = session_inputs(tmp_path)
+    digest = "a" * 64
+    first = create_rollout_session(
+        log,
+        protocol,
+        tmp_path / "session-a",
+        robot_plan=plan,
+        checkpoint=checkpoint,
+        dataset_digest=digest,
+    )
+    second = create_rollout_session(
+        log,
+        protocol,
+        tmp_path / "session-b",
+        robot_plan=plan,
+        checkpoint=checkpoint,
+        dataset_digest=digest,
+    )
+    assert first["complete"] and first["identity"]["checkpoint"]["sha256"]
+    assert (tmp_path / "session-a/report.html").is_file()
+    comparison = compare_rollout_sessions([tmp_path / "session-a", tmp_path / "session-b"])
+    assert comparison["comparable"]
+    second["identity"]["dataset_digest"] = "b" * 64
+    (tmp_path / "session-b/manifest.json").write_text(json.dumps(second), encoding="utf-8")
+    assert not compare_rollout_sessions([tmp_path / "session-a", tmp_path / "session-b"])[
+        "comparable"
+    ]
+
+
+def test_rollout_session_enforces_protocol(tmp_path):
+    log, protocol, plan, checkpoint = session_inputs(tmp_path)
+    rows = log.read_text(encoding="utf-8").replace('"task": "pick"', '"task": "place"', 1)
+    log.write_text(rows, encoding="utf-8")
+    with pytest.raises(ValueError, match="protocol task"):
+        create_rollout_session(
+            log,
+            protocol,
+            tmp_path / "bad-session",
+            robot_plan=plan,
+            checkpoint=checkpoint,
+            dataset_digest="a" * 64,
+        )

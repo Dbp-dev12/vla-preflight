@@ -102,6 +102,20 @@ def register(subs):
     )
     rollout.add_argument("log", type=Path)
     rollout.add_argument("--output", type=Path, required=True)
+    rollout_import = subs.add_parser(
+        "rollout-import", help="Create a first-class rollout session bound to robot/data/policy"
+    )
+    rollout_import.add_argument("log", type=Path)
+    rollout_import.add_argument("--protocol", type=Path, required=True)
+    rollout_import.add_argument("--robot-plan", type=Path, required=True)
+    rollout_import.add_argument("--checkpoint", type=Path, required=True)
+    rollout_import.add_argument("--dataset-digest", required=True)
+    rollout_import.add_argument("--output", type=Path, required=True)
+    rollout_compare = subs.add_parser(
+        "rollout-compare", help="Compare sessions only when protocol, robot and data match"
+    )
+    rollout_compare.add_argument("sessions", type=Path, nargs="+")
+    rollout_compare.add_argument("--output", type=Path)
     studio = subs.add_parser("studio", help="Local data and training workbench at 127.0.0.1")
     studio.add_argument("dataset", type=Path)
     studio.add_argument("--workspace", type=Path, default=Path("workbench-output"))
@@ -245,6 +259,27 @@ def dispatch(args):
 
         result = write_rollout_evaluation(args.log, args.output)
         print(json.dumps(result, ensure_ascii=False, indent=2))
+    elif args.command == "rollout-import":
+        from .rollouts import create_rollout_session
+
+        result = create_rollout_session(
+            args.log,
+            args.protocol,
+            args.output,
+            robot_plan=args.robot_plan,
+            checkpoint=args.checkpoint,
+            dataset_digest=args.dataset_digest,
+        )
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result["complete"] else 1
+    elif args.command == "rollout-compare":
+        from .rollouts import compare_rollout_sessions
+
+        result = compare_rollout_sessions(args.sessions)
+        if args.output:
+            atomic_json(args.output, result)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result["comparable"] else 1
     elif args.command == "studio":
         from .studio import serve
 

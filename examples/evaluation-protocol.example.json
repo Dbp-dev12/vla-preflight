@@ -1,0 +1,16 @@
+{
+  "protocol_id": "red-block-to-bowl-v1",
+  "task": "red block to bowl",
+  "success_definition": "The red block is fully inside the bowl when the robot stops, without human contact.",
+  "reset_procedure": "Return the robot home and place the block and bowl on their marked positions.",
+  "environment": "Fixed table, fixed front camera and constant indoor lighting",
+  "required_episodes": 20,
+  "max_duration_s": 60,
+  "allowed_failure_modes": [
+    "missed grasp",
+    "dropped object",
+    "wrong placement",
+    "timeout",
+    "safety stop"
+  ]
+}
